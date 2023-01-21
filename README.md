@@ -2,7 +2,7 @@ This code uses a semi-analytic approach to compute the velocity distribution of 
 
 To use the code, just download and run the script "prop.py". The script will ask you for input parameters, then begin the run. The example input for a run through 100 collisions, with a dark matter mass of 100 MeV and DM-nucleon cross section of 10^-30 cm^2, for a detector 1400 meters underground, is shown below:
 
-python3 prop.py
+% python3 prop.py
 
 Please type 1 for crust shielding, or 0 for atmospheric (default is crust): 1
 
