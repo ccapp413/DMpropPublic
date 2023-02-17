@@ -14,10 +14,11 @@ from pathlib import Path
 from scipy.integrate import trapz
 from scipy.optimize import fsolve
 from scipy.integrate import quad
+from scipy.signal import convolve
 
 #a numerical factor that speeds up energy convolution
 #setting this to even smaller values may speed up the integration, but has NOT been tested for values below 10**-10
-speedfactor=10**-10
+speedfactor=10**-9
 
 #define constants and functions
 #the incomplete gamma function with first argument zero is related to the exponential integral as below
@@ -106,10 +107,28 @@ if shield==0:
     backscatter=0
 
 #set the distribution of first scattering depths, which for a flux that is isotropic from above is  given by an incomplete gamma function
-xinitial=np.logspace(-10,math.log10(res+20*l),200000)
+if backscatter==0:
+    xinitial=np.logspace(-10,math.log10(res),20000)
+if backscatter==1:
+    xinitial=np.logspace(-10,2*math.log10(res),40000)
 for i in xinitial:
     dist1.append(1.0/l * gammazero(i/l))
 f = interp1d(xinitial,dist1,kind='quadratic',fill_value='extrapolate')
+
+testing=convolve(dist1,dist1)/(2*l)
+disttest=[]
+distbelow=[]
+distconv=[]
+testx=np.linspace(0,res,200000)
+belowx=np.linspace(res+res/200000,2*res,400000)
+testconv=np.linspace(0,2*(res),399999)
+for i in testx:
+    disttest.append(1.0/l * gammazero(10**(-5)+i/l)/200)
+for i in belowx:
+    distbelow.append(1.0/l * gammazero((i)/l)/200)
+for i in testconv:
+    distconv.append(1.0/(2*l) * gammazero(10**(-5)+abs((res)-i)/l)/200)
+finalx=testx
 
 print(xinitial)
 print(1000+10*l)
@@ -137,64 +156,79 @@ for iter in range(1,itermax):
             for line in infile3.readlines():
                 dist3.append(float(line))
     else:
-        for i in range(int(20*l)+res):
+#        for i in range(res):
 #            dist2.append(integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-5)+abs((i+1)-zp)/l),0,300,limit=200)[0] + integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-5)+abs((i+1)-zp)/l),300,1000,limit=200)[0])
 #            dist2.append(integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-5)+abs((i)-zp)/l),0,1000,limit=100,epsabs=10**-10)[0])
-            dist2.append(integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-5)+abs((i)-zp)/l),0,max(i-0.5*l,0),limit=2000,epsrel=10**-10)[0] + integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-5)+abs((i)-zp)/l),max(i-0.5*l,0),min(i+0.5*l,res),limit=2000,epsrel=10**-10)[0] + integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-5)+abs((i)-zp)/l),min(i+0.5*l,res),res,limit=2000,epsrel=10**-10)[0])
-            dist3.append(integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-5)+abs((i+1)-zp)/l),res,res+10*l,limit=2000,epsrel=10**-10)[0])
-            if str(dist2[i]) == "inf":
-                print("infinity at ")
-                print(i)
-        with open(filename, "w") as outfile:
-            for element in dist2:
-                outfile.write(str(element)+"\n")
-        with open(filenameback, "w") as outfile3:
-            for element in dist3:
-                outfile3.write(str(element)+"\n")
-
+###            dist2.append(integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-10)+abs((i)-zp)/l),0,max(i-0.5*l,0),limit=2000,epsrel=10**-10)[0] + integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-10)+abs((i)-zp)/l),max(i-0.5*l,0),min(i+0.5*l,res),limit=2000,epsrel=10**-10)[0] + integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-10)+abs((i)-zp)/l),min(i+0.5*l,res),res,limit=2000,epsrel=10**-10)[0])
+#            dist2.append(convolve(finalx,testconv).tolist())
+#            dist3.append(integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-5)+abs((i+1)-zp)/l),res,res+10*l,limit=2000,epsrel=10**-10)[0])
+#            if str(dist2[i]) == "inf":
+#                print("infinity at ")
+#                print(i)
+#        with open(filename, "w") as outfile:
+#            for element in dist2:
+#                outfile.write(str(element)+"\n")
+#        with open(filenameback, "w") as outfile3:
+#            for element in dist3:
+#                outfile3.write(str(element)+"\n")
+#        print(dist2)
+#        print(testing)
+        dist2=convolve(disttest,distconv,method="fft").tolist()
+        dist3=convolve(distbelow,distconv,method="fft").tolist()
     #compute the fraction of particles scattered out into the atmosphere
     distatm=[]
     filenameatm="depth/back"+str(backscatter)+"shield"+str(shield)+"mdm"+str(mdm)+"logsigma"+str(logsigma)+"depth"+str(depth)+"iter"+str(iter)+"atm.dat"
-    if Path(filenameatm).exists():
-        with open(filenameatm, "r") as infile:
-            for line in infile.readlines():
-                distatm.append(float(line))
-    else:
-        for i in range(int(10*l)):
-            distatm.append(integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-5)+abs((-i)-zp)/l),0,1000,limit=2000,epsrel=10**-10)[0])
-            if str(distatm[i]) == "inf":
-                print("infinity at ")
-                print(i)
-        with open(filenameatm, "w") as outfile:
-            for element in distatm:
-                outfile.write(str(element)+"\n")
+#    if Path(filenameatm).exists():
+#        with open(filenameatm, "r") as infile:
+#            for line in infile.readlines():
+#                distatm.append(float(line))
+#    else:
+#        for i in range(int(10*l)):
+#            distatm.append(integrate.quad(lambda zp: f(zp)*(1.0/(2.0*l))*gammazero(10**(-5)+abs((-i)-zp)/l),0,1000,limit=2000,epsrel=10**-10)[0])
+#            if str(distatm[i]) == "inf":
+#                print("infinity at ")
+#                print(i)
+#        with open(filenameatm, "w") as outfile:
+#            for element in distatm:
+#                outfile.write(str(element)+"\n")
 
     #compute the number of particles that traveled from above the detector to below it,
     #and the fraction of particles that backscattered from below he detector to above it
     #combine the distribution of particles that scattered from above the detector and from below the detector
     #into one total distribution
-    fforward=interp1d([i for i in range(int(20*l)+res)],dist2,kind='quadratic',fill_value=0)
-    nd = integrate.quad(lambda x: fforward(x),res,res+int(10*l-1))[0]
-    fback=interp1d([i for i in range(int(20*l)+res)],dist3,kind='quadratic',fill_value=0)
-    ndback = integrate.quad(lambda x: fback(x),max(res-int(10*l),1),res)[0]
-#    ndback = integrate.quad(lambda x: fback(x),res-int(10*l),res)[0]
+    print(len(dist2))
+    print(len([i for i in range(int(20*l)+res)]))
+#    fforward=interp1d([i for i in range(int(20*l)+res)],dist2,kind='quadratic',fill_value=0)
+#    nd = integrate.quad(lambda x: fforward(x),res,res+int(10*l-1))[0]
+    if backscatter==0:
+        nd=sum(dist2[-200000:])
     if backscatter==1:
-        nd=nd+ndback
-        disttotal=[x+y for x,y in zip(dist2,dist3)]
-    else:
-        disttotal=dist2
-    f=interp1d([i for i in range(int(20*l)+res)],disttotal,kind='quadratic',fill_value=0)
+        nd=sum(dist2[-200000:])+sum(dist3[:200000])
+        print(sum(dist2[-200000:])," ",sum(dist3[:200000]))
+#    fback=interp1d([i for i in range(int(20*l)+res)],dist3,kind='quadratic',fill_value=0)
+#    ndback = integrate.quad(lambda x: fback(x),max(res-int(10*l),1),res)[0]
+#    ndback = integrate.quad(lambda x: fback(x),res-int(10*l),res)[0]
+#        nd=nd+ndback
+#        disttotal=[x+y for x,y in zip(dist2,dist3)]
+    if backscatter==0:
+#        disttotal=dist2
+        disttest=dist2[200000:400000]
+        distbelow=dist2[400000:]
+    if backscatter==1:
+        disttest=[sum(x) for x in zip(dist2[200000:400000],dist3[:200000])]
+        distbelow=[sum(x) for x in zip(dist2[400000:],dist3[200000:400000])]
+#    f=interp1d([i for i in range(int(20*l)+res)],disttotal,kind='quadratic',fill_value=0)
     remaining=integrate.quad(lambda x: f(x),0,res)[0]
 #    print(disttotal)
 #    f=interp1d(xinitial,disttotal,kind='cubic')
     natm=natm+sum(distatm)
     print("Fraction of particles reaching detector after "+str(iter)+" scatterings is "+str(nd))
-    print("Cumulative fraction of particles scattered back into the atmosphere after "+str(iter)+" or fewer scatterings is "+str(natm))
-    print("Fraction remaining is"+str(remaining))
-    dist.append(disttotal)
+#    print("Cumulative fraction of particles scattered back into the atmosphere after "+str(iter)+" or fewer scatterings is "+str(natm))
+#    print("Fraction remaining is"+str(remaining))
+    dist.append(disttest)
     fractionlist.append(nd)
 
-print(sum(fractionlist))
+#print(sum(fractionlist))
 
 ##########################################################################################
 #energy loss calculation
@@ -243,7 +277,9 @@ for i in range(1,len(fractionlist)):
     else:
         for edm in energylist:
 #            print("help")
-            energydist2.append((1./speedfactor)*sum([linvlist[j]*integrate.quad(lambda xp: (1.0/(1.0-xp))*(1.0/elossmaxfrac(mdm,nucleuslist[j]))*speedfactor*fen(edm/(1.0-xp)),0*10**(-8)*elossmaxfrac(mdm,nucleuslist[j]),elossmaxfrac(mdm,nucleuslist[j]))[0] for j in range(len(nucleuslist))])/sum(linvlist))
+#            energydist2.append(sum([linvlist[j]*integrate.romberg(lambda xp: (1.0/(1.0-xp))*(1.0/elossmaxfrac(mdm,nucleuslist[j]))*fen(edm/(1.0-xp)),0,elossmaxfrac(mdm,nucleuslist[j]))[0] for j in range(len(nucleuslist))])/sum(linvlist))
+            energydist2.append((1./speedfactor)*sum([linvlist[j]*integrate.romberg(lambda xp: (1.0/(1.0-xp))*(1.0/elossmaxfrac(mdm,nucleuslist[j]))*speedfactor*fen(edm/(1.0-xp)),0*10**(-8)*elossmaxfrac(mdm,nucleuslist[j]),elossmaxfrac(mdm,nucleuslist[j])) for j in range(len(nucleuslist))])/sum(linvlist))
+#            energydist2.append((1./speedfactor)*sum([linvlist[j]*integrate.quad(lambda xp: (1.0/(1.0-xp))*(1.0/elossmaxfrac(mdm,nucleuslist[j]))*speedfactor*fen(edm/(1.0-xp)),0*10**(-8)*elossmaxfrac(mdm,nucleuslist[j]),elossmaxfrac(mdm,nucleuslist[j]))[0] for j in range(len(nucleuslist))])/sum(linvlist))
 #            energydist2.append(sum([linvlist[j]*integrate.quad(lambda xp: (1.0+xp)*(1.0/elossmaxfrac(mdm,nucleuslist[j]))*fen(edm*(1.0+xp)),0,elossmaxfrac(mdm,nucleuslist[j]))[0] for j in range(len(nucleuslist))])/sum(linvlist))
         with open(enfilename, "w") as outfile:
             for element in energydist2:
@@ -381,8 +417,6 @@ if detector=="cresst":
 #    resolution=3.86*10**-9
 #print(finalvelocitydist[len(fractionlist)-1])
 
-
-
 ##the below is redundant?
 #fveldist=interp1d([10**-6*i*finalvelocitydist[len(fractionlist)-1][i] for i in range(1,3000)],bounds_error=False,fill_value=0)
 fveldist=interp1d([10**-6*i for i in range(1,3000)],finalvelocitydist[len(fractionlist)-1],bounds_error=False,fill_value=0)
@@ -485,6 +519,8 @@ print("cl is "+str(cl))
 
 #print(disttotal)
 
+fig = plt.figure(figsize=(5.5,5))
+
 for j in range(len(fractionlist)):
     plt.plot([10**-6*i for i in range(1,3000)],[finalvelocitydist[j][i] for i in range(len(finalvelocitydist[j]))])
 ##plt.plot([10**-6*i for i in range(1,3000)],[velocitydist(10**-6*x) for x in range(1,3000)])
@@ -494,11 +530,24 @@ for j in range(len(fractionlist)):
 #plt.plot(ereclist,[frecoilW(en) for en in ereclist])
 #plt.loglog(range(1000),[f(zp)*(1.0/(2.0*l))*gammazero(10**-5+abs(300-zp)/l) for zp in range(1000)])
 #plt.loglog(cresstdata,[frecoil2(en) for en in cresstdata])
-plt.xlabel("Velocity [c]", fontsize=18)
-plt.ylabel("Attenuated Velocity PDF",fontsize=18)
+plt.xlabel("Velocity [c]", fontsize=16)
+plt.ylabel("Attenuated Velocity PDF",fontsize=16)
 plt.yscale("log")
-plt.xlim([0.000,0.003])
+plt.xlim([0.000,0.0028])
 plt.ylim([10**-20,10**3])
+
+with open("500mev30.txt") as f:
+    lines = f.readlines()
+vel=[]
+pdf=[]
+velpdf=[]
+for line in lines:
+    vel.append(float(line.split()[0]))
+    pdf.append(float(line.split()[1]))
+    velpdf.append(float(line.split()[0])*float(line.split()[1]))
+plt.plot(vel,pdf,"k-",linewidth=2)
+print("montecarlo")
+print(trapz(pdf,vel))
 
 with open("53010.txt") as f:
     lines = f.readlines()
@@ -509,7 +558,7 @@ for line in lines[:110]:
     vel.append(float(line.split()[0]))
     pdf.append(float(line.split()[1]))
     velpdf.append(float(line.split()[0])*float(line.split()[1]))
-plt.plot(vel,pdf,"k-",linewidth=2)
+###plt.plot(vel,pdf,"k-",linewidth=2)
 print("montecarlo")
 print(trapz(pdf,vel))
 
@@ -522,20 +571,7 @@ for line in lines:
     vel.append(float(line.split()[0]))
     pdf.append(float(line.split()[1]))
     velpdf.append(float(line.split()[0])*float(line.split()[1]))
-plt.plot(vel,pdf,"k-",linewidth=2)
-print("montecarlo")
-print(trapz(pdf,vel))
-
-with open("atmohigh.txt") as f:
-    lines = f.readlines()
-vel=[]
-pdf=[]
-velpdf=[]
-for line in lines:
-    vel.append(float(line.split()[0]))
-    pdf.append(float(line.split()[1]))
-    velpdf.append(float(line.split()[0])*float(line.split()[1]))
-#plt.plot(vel,pdf,"r-",linewidth=2)
+###plt.plot(vel,pdf,"k-",linewidth=2)
 print("montecarlo")
 print(trapz(pdf,vel))
 
@@ -548,19 +584,7 @@ for line in lines[:120]:
     vel.append(float(line.split()[0]))
     pdf.append(float(line.split()[1]))
     velpdf.append(float(line.split()[0])*float(line.split()[1]))
-plt.plot(vel,pdf,"k-",linewidth=2)
-
-#with open("fixedphigev.txt") as f:
-with open("point2_330500.txt") as f:
-    lines = f.readlines()
-vel=[]
-pdf=[]
-velpdf=[]
-for line in lines:
-    vel.append(float(line.split()[0]))
-    pdf.append(float(line.split()[1]))
-    velpdf.append(float(line.split()[0])*float(line.split()[1]))
-#plt.plot(vel,pdf,"k-")
+###plt.plot(vel,pdf,"k-",linewidth=2)
 
 
 velArray=[i*10**-5 for i in range(1,300)]
@@ -628,8 +652,11 @@ for i in range(len(scatterArray)):
 #    print(differentialvelocitydist[i][2547:])
 plt.plot(velArray2,scatterArray2,"k--")
 
+plt.tick_params(which='both',direction='in',labelsize=10)
+
 #print(sum(fractionlist))
 
 ##outname="back"+str(backscatter)+"shield"+str(shield)+"mdm"+str(mdm)+"logsigma"+str(logsigma)+"depth"+str(depth)+"itermax"+str(itermax)+".pdf"
-plt.savefig("velocitydistribution.pdf")
+plt.tight_layout()
+plt.savefig("velocitydistribution"+str(itermax)+".pdf")
 plt.show()
