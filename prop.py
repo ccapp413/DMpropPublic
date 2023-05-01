@@ -364,8 +364,8 @@ cressteffy=[.001,.12,.32,.57,.80,.94,.985,.995,.995,.996,1]#surface
 #cressteffx=[x*10**-9 for x in [.1,22.1,26.7,30,33.8,38.6,45.6,53.3,68,84.7,112,149,211,310,438,639,1108,1920,3461,5953,9317,12960,15899,20000]]#below ground
 #cressteffy=[0.001,.018,.107,.282,.395,.509,.535,.553,.57,.578,.588,.593,.598,.608,.626,.636,.642,.645,.647,.643,.624,.634,.654,.654]#below ground
 cresstefficiency=interp1d(cressteffx,cressteffy,bounds_error=False,fill_value=0)
-if detector=="cresst":
-
+#if detector=="cresst":
+#
 #factor of 2 is to account for Emken et al.'s assumption that half of flux is not blocked by the Earth
 #factor of .001 is for subdominant DM
 sizelist=[]
