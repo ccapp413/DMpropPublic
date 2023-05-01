@@ -84,6 +84,8 @@ linv_N_atm = sigmaA(mdm,logsigma,14)*f_N_atm*rhoatm*n_A/14.0
 
 nucleuslist=[16,28,27,56,40,39,23,24]
 linvlist=[linv_O,linv_Si,linv_Al,linv_Fe,linv_Ca,linv_K,linv_Na,linv_Mg]
+linvlistatm=[linv_N_atm,linv_O_atm]
+nucleuslistatm=[14,16]
 #print("linvlist")
 #print(linvlist)
 
@@ -183,6 +185,7 @@ def velocitydist(v):
     Nesc = math.pi * vsun * vsun * (math.sqrt(math.pi) * vsun * math.erf(vesc / vsun) - 2 * vesc * math.exp(-vesc * vesc / vsun / vsun))
     return math.pi*v*vsun*vsun/(vearth*Nesc) * (2*math.exp(-(v*v+vearth*vearth)/(vsun*vsun))*math.sinh(2*v*vearth/(vsun*vsun)) + (math.exp(-(v+vearth)**2/(vsun**2)) - math.exp(-vesc*vesc/(vsun*vsun)))*np.heaviside(np.abs(v+vearth)-vesc,0.5) - (math.exp(-(v-vearth)**2/(vsun**2)) - math.exp(-vesc*vesc/(vsun*vsun)))*np.heaviside(np.abs(v-vearth)-vesc,0.5) )*np.heaviside(vearth+vesc-v,0.5)
 
+#convert velocity distribution into an energy distribution
 def edist(mdm,edm):
     return velocitydist((2*edm/mdm)**(0.5))*1.0/(2.0*mdm*edm)**0.5
 energyplots=[]
@@ -250,6 +253,9 @@ for i in range(1,3000):
     eplot.append(edist(mdm,i/1000000000.))
 
 nA=6.022*10**23
+
+########################################
+#this section is for xenon, we probably won't be using it
 exposurexenon=1042*1000*nA*34.2*(60*60*24)
 
 fveldist=interp1d([10**-6*i for i in range(1,3000)],finalvelocitydist[len(fractionlist)-1],bounds_error=False,fill_value=0)
@@ -265,6 +271,7 @@ xenoneffy=[0.0025798775153107500,0.04034155730533700,0.14739737532808400,0.46020
 xenonefficiency=interp1d(xenoneffx,xenoneffy,bounds_error=False,fill_value=0)
 totalevents=integrate.quad(lambda en: frecoil(en)*xenonefficiency(en),4.9*10**-6,40.9*10**-6)
 print("total events in XENON1T is "+str(totalevents[0]))
+########################################
 
 #below is for surface run
 cresstdata=[19.7*10**-9]
@@ -286,15 +293,6 @@ cresstdata.append(600*10**-9)
 ##print("cresst data is")
 ##print(cresstdata)
 
-##supercdmsdata=[16.3*10**-9]
-##with open('supercdmsdata.dat',"r") as datfile:
-##    for row in datfile.readlines():
-##        supercdmsdata.append(float(row)*10**-6)
-##supercdmsdata.sort()
-##supercdmsdata.append(240*10**-9)
-##print("supercdmsdata")
-##print(len(supercdmsdata))
-
 detector="cresst"
 
 #exposure in gram-days
@@ -309,8 +307,6 @@ if detector=="cresst":
 #    resolution=3.86*10**-9
 #print(finalvelocitydist[len(fractionlist)-1])
 
-##the below is redundant?
-#fveldist=interp1d([10**-6*i*finalvelocitydist[len(fractionlist)-1][i] for i in range(1,3000)],bounds_error=False,fill_value=0)
 fveldist=interp1d([10**-6*i for i in range(1,3000)],finalvelocitydist[len(fractionlist)-1],bounds_error=False,fill_value=0)
 ereclist=np.linspace(.1*10**-9,1700*10**-9,1000)
 espectlistO=[]
@@ -369,12 +365,7 @@ cressteffy=[.001,.12,.32,.57,.80,.94,.985,.995,.995,.996,1]#surface
 #cressteffy=[0.001,.018,.107,.282,.395,.509,.535,.553,.57,.578,.588,.593,.598,.608,.626,.636,.642,.645,.647,.643,.624,.634,.654,.654]#below ground
 cresstefficiency=interp1d(cressteffx,cressteffy,bounds_error=False,fill_value=0)
 if detector=="cresst":
-#these integrals don't really work because the energy range is too wide but they aren't used for computing the CL anyway
-    totalevents=integrate.quad(lambda en: frecoil2(en)*cresstefficiency(en),19.7*10**-9,600*10**-9,limit=100)#change to this for surface run
-#    totalevents=integrate.quad(lambda en: frecoil2(en)*cresstefficiency(en),30.1*10**-9,16000*10**-9,limit=100)#change to this for below ground run
-    print("total events in CRESST is "+str(totalevents[0]))
-if detector=="supercdms":
-    totalevents=integrate.quad(lambda en: .883*frecoil2(en),16.3*10**-9,240*10**-9,limit=100)
+
 #factor of 2 is to account for Emken et al.'s assumption that half of flux is not blocked by the Earth
 #factor of .001 is for subdominant DM
 sizelist=[]
@@ -408,6 +399,10 @@ def dedx(en):
     return 0.5*sum([linvlist[j]*en*elossmaxfrac(mdm,nucleuslist[j]) for j in range(len(nucleuslist))])
 def integrand(en):
     return -1.0/(dedx(en))
+def dedxatm(en):
+    return 0.5*sum([linvlistatm[j]*en*elossmaxfrac(mdm,nucleuslistatm[j]) for j in range(len(nucleuslistatm))])
+def integrandatm(en):
+    return -1.0/(dedxatm(en))
 
 imin=0
 jacmin=0
@@ -420,7 +415,10 @@ for i in range(len(velArray)):
     if scatterArray[i]>0:
         counter=counter+1
         vc=velArray[i]
-        func = lambda v: quad(integrand,0.5*vc**2*mdm,0.5*v**2*mdm)[0]-140000
+        if shield==1:
+            func = lambda v: quad(integrand,0.5*vc**2*mdm,0.5*v**2*mdm)[0]-100*depth
+        else:
+            func = lambda v: quad(integrandatm,0.5*vc**2*mdm,0.5*v**2*mdm)[0]-1000
         vnewc=np.abs(fsolve(func,0.0001)[0])
         jacobian=vc/vnewc
         if jacmin==0:
