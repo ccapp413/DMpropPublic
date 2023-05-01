@@ -307,16 +307,20 @@ if detector=="cresst":
 #    resolution=3.86*10**-9
 #print(finalvelocitydist[len(fractionlist)-1])
 
+#finalvelocitydist is the list of velocity distributions that the code eventually plots
+#The last element of finalvelocitydist is the vull velocity distribution after summing over the specified number of scatterings
+#frecoilO and frecoilAl are the recoil spectra for oxygen and aluminum givn a detector like the CRESST surface detector
+
 fveldist=interp1d([10**-6*i for i in range(1,3000)],finalvelocitydist[len(fractionlist)-1],bounds_error=False,fill_value=0)
 ereclist=np.linspace(.1*10**-9,1700*10**-9,1000)
 espectlistO=[]
-espectlistAr=[]
+espectlistAl=[]
 espectlistW=[]
 espectlistCa=[]
 espectlistWfake=[]
 for erec in ereclist:
     vminO=(erec*(mdm+16.*amu)**2/(2.*16.*amu*mdm**2))**(0.5)
-    vminAr=(erec*(mdm+27.*amu)**2/(2.*27.*amu*mdm**2))**(0.5)
+    vminAl=(erec*(mdm+27.*amu)**2/(2.*27.*amu*mdm**2))**(0.5)
     vminCa=(erec*(mdm+40.*amu)**2/(2.*40.*amu*mdm**2))**(0.5)
     vminW=(erec*(mdm+184.*amu)**2/(2.*184.*amu*mdm**2))**(0.5)
 #    print(vmin)
@@ -324,7 +328,7 @@ for erec in ereclist:
     if detector=="cresst":#element mass fraction times speed of light times exposure over nuclear mass times dm density times other stuff
 #the following two are for surface run
         espectlistO.append(((3.*16.)/(3.*16.+2.*27.))*(3.0*10**10/(1.0))*(exposure/(16*amu))*(0.5*0.3/mdm)*(mdm+16*amu)**2/(2*16*amu*mdm**2)*sigmaA(mdm,logsigma,16.0)*integrate.quad(lambda v: fveldist(v)/v,vminO,vmax)[0])
-        espectlistAr.append(((2.*27.)/(3.*16.+2.*27.))*(3.0*10**10/(1.0))*(exposure/(27*amu))*(0.5*0.3/mdm)*(mdm+27*amu)**2/(2*27*amu*mdm**2)*sigmaA(mdm,logsigma,27.0)*integrate.quad(lambda v: fveldist(v)/v,vminAr,vmax)[0])
+        espectlistAl.append(((2.*27.)/(3.*16.+2.*27.))*(3.0*10**10/(1.0))*(exposure/(27*amu))*(0.5*0.3/mdm)*(mdm+27*amu)**2/(2*27*amu*mdm**2)*sigmaA(mdm,logsigma,27.0)*integrate.quad(lambda v: fveldist(v)/v,vminAl,vmax)[0])
 #the following three are for underground run
 #        espectlistO.append(((4.*16.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(16*amu))*(0.5*0.3/mdm)*(mdm+16*amu)**2/(2*16*amu*mdm**2)*sigmaA(mdm,logsigma,16.0)*integrate.quad(lambda v: fveldist(v)/v,vminO,vmax)[0])
 #        espectlistW.append(((184.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(184*amu))*(0.5*0.3/mdm)*(mdm+184*amu)**2/(2*184*amu*mdm**2)*sigmaA(mdm,logsigma,184.0)*integrate.quad(lambda v: fveldist(v)/v,vminW,vmax)[0])
@@ -335,7 +339,7 @@ for erec in ereclist:
 print("espect is")
 
 frecoilO=interp1d(ereclist,espectlistO,bounds_error=False,fill_value=0)
-frecoilAr=interp1d(ereclist,espectlistAr,bounds_error=False,fill_value=0)#surface run
+frecoilAl=interp1d(ereclist,espectlistAl,bounds_error=False,fill_value=0)#surface run
 #frecoilW=interp1d(ereclist,espectlistW,bounds_error=False,fill_value=0)#underground run
 #frecoilWfake=interp1d(ereclist,espectlistWfake,bounds_error=False,fill_value=0)
 #frecoilCa=interp1d(ereclist,espectlistCa,bounds_error=False,fill_value=0)#underground run
@@ -346,9 +350,9 @@ espectlistconv=[]
 #below is for surface run
 for erec in ereclist:
     if erec > 10**-8:
-        espectlist2.append(np.convolve([(frecoilO(en)+frecoilAr(en)) for en in np.linspace(erec-3*resolution,erec+3*resolution,num=1000)],[(6*resolution/(1000))/(resolution*(2.*3.14159)**.5)*2.718**(-0.5*((x)/(resolution))**2.) for x in np.linspace(-3*resolution,3*resolution,num=1000)],"valid")[0])
+        espectlist2.append(np.convolve([(frecoilO(en)+frecoilAl(en)) for en in np.linspace(erec-3*resolution,erec+3*resolution,num=1000)],[(6*resolution/(1000))/(resolution*(2.*3.14159)**.5)*2.718**(-0.5*((x)/(resolution))**2.) for x in np.linspace(-3*resolution,3*resolution,num=1000)],"valid")[0])
     else:
-        espectlist2.append(frecoilO(erec)+frecoilAr(erec))
+        espectlist2.append(frecoilO(erec)+frecoilAl(erec))
 frecoil2=interp1d(ereclist,espectlist2,bounds_error=False,fill_value=0)
 
 #below is for underground run
@@ -373,10 +377,12 @@ for i in range(len(cresstdata)-1):
     sizelist.append(2*integrate.quad(lambda en: frecoil2(en)*cresstefficiency(en),cresstdata[i],cresstdata[i+1],limit=100)[0])
 
 #compute CL for CRESST detector using the optimal interval method
+#mu1 is the total number of events
 mu1=sum(sizelist)
 xmax=max(sizelist)
 cl=sum([(1+n/(mu1-n*xmax))*math.exp(-n*xmax)*(n*xmax-mu1)**n/(math.factorial(n)) for n in range(int(mu1/xmax)+1)])
 print("cl is "+str(cl))
+print("total events is "+str(mu1))
 
 fig = plt.figure(figsize=(5.5,5))
 
