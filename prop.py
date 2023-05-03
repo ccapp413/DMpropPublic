@@ -334,7 +334,7 @@ for erec in ereclist:
         espectlistO.append(((3.*16.)/(3.*16.+2.*27.))*(3.0*10**10/(1.0))*(exposure/(16*amu))*(0.5*0.3/mdm)*(mdm+16*amu)**2/(2*16*amu*mdm**2)*sigmaA(mdm,logsigma,16.0)*integrate.quad(lambda v: fveldist(v)/v,vminO,vmax)[0])
         espectlistAl.append(((2.*27.)/(3.*16.+2.*27.))*(3.0*10**10/(1.0))*(exposure/(27*amu))*(0.5*0.3/mdm)*(mdm+27*amu)**2/(2*27*amu*mdm**2)*sigmaA(mdm,logsigma,27.0)*integrate.quad(lambda v: fveldist(v)/v,vminAl,vmax)[0])
 #the following three are for underground run
-    if cresstdet="underground":
+    if cresstdet=="underground":
         espectlistO.append(((4.*16.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(16*amu))*(0.5*0.3/mdm)*(mdm+16*amu)**2/(2*16*amu*mdm**2)*sigmaA(mdm,logsigma,16.0)*integrate.quad(lambda v: fveldist(v)/v,vminO,vmax)[0])
         espectlistW.append(((184.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(184*amu))*(0.5*0.3/mdm)*(mdm+184*amu)**2/(2*184*amu*mdm**2)*sigmaA(mdm,logsigma,184.0)*integrate.quad(lambda v: fveldist(v)/v,vminW,vmax)[0])
 #        espectlistWfake.append(((184.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(184*amu))*(0.5*0.3/mdm)*(mdm+16*amu)**2/(2*184*amu*mdm**2)*sigmaA(mdm,logsigma,184.0)*integrate.quad(lambda v: fveldist(v)/v,vminW,vmax)[0])
