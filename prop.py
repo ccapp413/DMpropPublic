@@ -455,15 +455,15 @@ for costheta in [0.05,0.15,0.25,0.35,0.45,0.55,0.65,0.75,0.85,0.95]:
     for i in range(len(scatterArray)):
         if scatterArray[i]>0 and i<len(scatterArray)-1:
             scatterArray2[i]=scatterArray[i]*(velArray[i+1]-velArray[i-1])/(velArray2[i+1]-velArray2[i-1])
-    interpfuncs.append(interp1d(velarray2,scatterarray2,bounds_error=False, fill_value=0))
+    interpfuncs.append(interp1d(velArray2,scatterArray2,bounds_error=False, fill_value=0))
     
 def add_curves(A,B,C,D,E,F,G,H,I,J):
     def compute(x):
         return A(x) + B(x) + C(x) + D(x) + E(x) + F(x) + G(x) + H(x) + I(x) + J(x)
     return compute
 curvesum = add_curves(interpfuncs[0],interpfuncs[1],interpfuncs[2],interpfuncs[3],interpfuncs[4],interpfuncs[5],interpfuncs[6],interpfuncs[7],interpfuncs[8],interpfuncs[9])
-scatterArraySL = [curvesum(x) for x in velArray]
-plt.plot(velArray2,scatterArraySL,"k--")
+scatterArraySL = [0.1*curvesum(x) for x in velArray]
+plt.plot(velArray,scatterArraySL,"k--")
 
 plt.tick_params(which='both',direction='in',labelsize=10)
 
