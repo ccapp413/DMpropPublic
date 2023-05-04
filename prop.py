@@ -400,9 +400,9 @@ plt.ylim([10**-20,10**3])
 
 #compute attenuation using the straight line approximation for comparison (only works for underground run, depth 1400 meters)
 velArray=[i*10**-5 for i in range(1,300)]
-velArray2=velArray
+velArray2=[i for i in velArray]
 scatterArray=[velocitydist(v) for v in velArray]
-scatterArray2=scatterArray
+scatterArray2=[i for i in scatterArray]
 
 def dedx(en):
     return 0.5*sum([linvlist[j]*en*elossmaxfrac(mdm,nucleuslist[j]) for j in range(len(nucleuslist))])
