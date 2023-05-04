@@ -408,9 +408,9 @@ plt.ylim([10**-20,10**3])
 
 #compute attenuation using the straight line approximation for comparison (only works for underground run, depth 1400 meters)
 velArray=[i*10**-5 for i in range(1,300)]
-velArray2=velArray
+velArray2=[i for i in velArray]
 scatterArray=[velocitydist(v) for v in velArray]
-scatterArray2=scatterArray
+scatterArray2=[i for i in scatterArray]
 
 def dedx(en):
     return 0.5*sum([linvlist[j]*en*elossmaxfrac(mdm,nucleuslist[j]) for j in range(len(nucleuslist))])
@@ -420,9 +420,10 @@ def dedxatm(en):
     return 0.5*sum([linvlistatm[j]*en*elossmaxfrac(mdm,nucleuslistatm[j]) for j in range(len(nucleuslistatm))])
 def integrandatm(en):
     return -1.0/(dedxatm(en))
-
+print("Computing Straight Line Approximation")
 interpfuncs=[]
-for costheta in [0.05,0.15,0.25,0.35,0.45,0.55,0.65,0.75,0.85,0.95]:
+for costheta in [(i-1/2)/50 for i in np.linspace(1,50,50)]:
+#for costheta in [0.025,0.075,0.125,0.175,0.225,0.275,0.325,0.375,0.425,0.475,0.525,0.575,0.625,0.675,0.725,0.775,0.825,0.875,0.925,0.975]:
     imin=0
     jacmin=0
     imax=0
@@ -455,15 +456,17 @@ for costheta in [0.05,0.15,0.25,0.35,0.45,0.55,0.65,0.75,0.85,0.95]:
     for i in range(len(scatterArray)):
         if scatterArray[i]>0 and i<len(scatterArray)-1:
             scatterArray2[i]=scatterArray[i]*(velArray[i+1]-velArray[i-1])/(velArray2[i+1]-velArray2[i-1])
-    interpfuncs.append(interp1d(velArray2,scatterArray2,bounds_error=False, fill_value=0))
-    
-def add_curves(A,B,C,D,E,F,G,H,I,J):
+    interpfuncs.append(interp1d(velArray2[:-1],scatterArray2[:-1],bounds_error=False, fill_value=0))
+    if(velArray2[-2]<0.00001):
+        break
+
+def add_curves(list):
     def compute(x):
-        return A(x) + B(x) + C(x) + D(x) + E(x) + F(x) + G(x) + H(x) + I(x) + J(x)
+        return sum([el(x) for el in list])
     return compute
-curvesum = add_curves(interpfuncs[0],interpfuncs[1],interpfuncs[2],interpfuncs[3],interpfuncs[4],interpfuncs[5],interpfuncs[6],interpfuncs[7],interpfuncs[8],interpfuncs[9])
-scatterArraySL = [0.1*curvesum(x) for x in velArray]
-plt.plot(velArray,scatterArraySL,"k--")
+curvesum = add_curves(interpfuncs)
+scatterArraySL = [0.02*curvesum(x) for x in np.linspace(0.00002,0.0027,100)]
+plt.plot(np.linspace(0.00002,0.0027,100),scatterArraySL,"k--")
 
 plt.tick_params(which='both',direction='in',labelsize=10)
 
