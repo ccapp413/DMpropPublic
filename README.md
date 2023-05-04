@@ -14,4 +14,7 @@ Please input detector depth in m (default is 1000): 1400
 
 Please choose the number of convolutions to perform (default is zero): 100
 
-While running, the script saves depth and energy distributions as text files in the directories "depth" and "energy." This speeds up subsequent runs, in that if you want to run the script for several cross sections at the same mass, the energy distribution only needs to be computed once. It also means that if you forget to save the results of a run, they will still be there and the code can reproduce the figures and event rates quickly. However, be aware that this can lead to a very large number of files being saved if you do not preiodically delete them.
+While running, the script saves energy distributions as text files in the directories "depth" and "energy." This speeds up subsequent runs, in that if you want to run the script for several cross sections at the same mass, the energy distribution only needs to be computed once. It also means that if you forget to save the results of a run, they will still be there and the code can reproduce the figures and event rates quickly. However, be aware that this can lead to a very large number of files being saved if you do not preiodically delete them.
+
+
+NOTE: When running at cross sections much larger than direct detection ceilings, the Fast Fourier Transform convolution method can produce unphysical results. In this case, the "method" of the colvolution function may be set to "direct", which slows down the code but is more reliable. 
