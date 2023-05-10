@@ -168,7 +168,7 @@ for iter in range(1,itermax):
     print("Fraction of particles reaching detector after "+str(iter)+" scatterings is "+str(nd))
     dist.append(disttest)
     fractionlist.append(nd)
-    if nd > fractionlist[0]*10:
+    if fractionlist[1] > fractionlist[0]*10:
         print("WARNING: Initial probability is too low. Please set convolution method to 'direct'")
         quit()
 
