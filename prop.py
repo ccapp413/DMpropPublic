@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import os
 import os.path
+import sys
 import csv
 import numpy as np
 import math
@@ -61,15 +62,22 @@ Path("depth").mkdir(exist_ok=True)
 Path("energy").mkdir(exist_ok=True)
 
 #input parameters
-shield = int(input("Please type 1 for crust shielding, or 0 for atmospheric (default is crust): ") or 1)
-mdm = float(input("Please input dark matter mass in GeV (default is 1.0): ") or 1.0)
-logsigma = float(input("Please input Log_10 of the DM-nucleon cross section in units of cm^2 (Log_10[sigma/cm^2]; default is -30): ") or -30.0)
-depth=1
+#shield = int(input("Please type 1 for crust shielding, or 0 for atmospheric (default is crust): ") or 1)
+#mdm = float(input("Please input dark matter mass in GeV (default is 1.0): ") or 1.0)
+#logsigma = float(input("Please input Log_10 of the DM-nucleon cross section in units of cm^2 (Log_10[sigma/cm^2]; default is -30): ") or -30.0)
+
+shield = int(sys.argv[1])
+mdm = float(sys.argv[2])
+logsigma = float(sys.argv[3])
+
+depth=0.01
 if shield==1:
-    depth = float(input("Please input detector depth in m (default is 1000): ") or 1000)
+#    depth = float(input("Please input detector depth in m (default is 1000): ") or 1000)
+    depth = float(sys.argv[4])
     if depth < 10:
         print("Warning: you have chosen crust shielding, but have set the detector depth to less than 10 m. Note that this code will not account for atmospheric attenuation, which may become significant for depth << 10 m.")
-itermax = int(input("Please choose the number of convolutions to perform (default is zero): ") or 0)+1
+#itermax = int(input("Please choose the number of convolutions to perform (default is zero): ") or 0)+1
+itermax = int(sys.argv[5])
 if itermax == 0:
     print("Warning: zero iterations selected. Outputting only the distribution of first scattering depths and fraction of particles reaching the detector without scattering.")
 
@@ -177,7 +185,6 @@ for iter in range(1,itermax):
     if fractionlist[1] > fractionlist[0]*10:
         print("WARNING: Initial probability is too low. Please set convolution method to 'direct'")
         quit()
-
 ##########################################################################################
 #energy loss calculation
 def elossmaxfrac(mdm,A):
