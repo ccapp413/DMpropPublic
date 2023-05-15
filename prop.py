@@ -120,7 +120,7 @@ disttest=[]
 distbelow=[]
 distconv=[]
 testx=np.linspace(0,res,200000)
-belowx=np.linspace(res+res/200000,2*res,400000)
+belowx=np.linspace(res+res/200000,2*res,200000)
 testconv=np.linspace(0,2*(res),399999)
 for i in testx:
     disttest.append(1.0/l * gammazero(10**(-5)+i/l)/200)
