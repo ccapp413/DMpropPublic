@@ -64,7 +64,7 @@ Path("energy").mkdir(exist_ok=True)
 shield = int(input("Please type 1 for crust shielding, or 0 for atmospheric (default is crust): ") or 1)
 mdm = float(input("Please input dark matter mass in GeV (default is 1.0): ") or 1.0)
 logsigma = float(input("Please input Log_10 of the DM-nucleon cross section in units of cm^2 (Log_10[sigma/cm^2]; default is -30): ") or -30.0)
-depth=1
+depth=0.01
 if shield==1:
     depth = float(input("Please input detector depth in m (default is 1000): ") or 1000)
     if depth < 10:
