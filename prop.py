@@ -394,7 +394,7 @@ for i in range(len(cresstdata)-1):
 #mu1 is the total number of events
 mu1=sum(sizelist)
 xmax=max(sizelist)
-cl=sum([(1+n/(mu1-n*xmax))*math.exp(-n*xmax)*(n*xmax-mu1)**n/(math.factorial(n)) for n in range(int(mu1/xmax)+1)])
+cl=sum([(1+n/(mu1-n*xmax))*math.exp(-n*xmax)*(n*xmax-mu1)**math.floor(n/2)*(n*xmax-mu1)**(n-math.floor(n/2))/(math.factorial(n)) for n in range(int(mu1/xmax)+1)])
 print("cl is "+str(cl))
 print("total events is "+str(mu1))
 
