@@ -387,7 +387,7 @@ for i in range(len(cresstdata)-1):
 #compute CL for CRESST detector using the optimal interval method
 mu1=sum(sizelist)
 xmax=max(sizelist)
-cl=sum([(1+n/(mu1-n*xmax))*math.exp(-n*xmax)*(n*xmax-mu1)**n/(math.factorial(n)) for n in range(int(mu1/xmax)+1)])
+cl=sum([(1+n/(mu1-n*xmax))*math.exp(-n*xmax)*(n*xmax-mu1)**math.floor(n/2)*(n*xmax-mu1)**(n-math.floor(n/2))/(math.factorial(n)) for n in range(int(mu1/xmax)+1)])
 print("cl is "+str(cl))
 
 fig = plt.figure(figsize=(5.5,5))
