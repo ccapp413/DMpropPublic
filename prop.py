@@ -147,6 +147,11 @@ fractionlist.append(nd)
 #loop over additional scatterings
 natm=0.0
 for iter in range(1,itermax):
+    if fractionlist[-1]<10**-20:
+        convm="direct"
+        print("Using direct convolution")
+    else:
+        convm="fft"
     if sum(fractionlist)>0.9:
         print("More than 90 percent of DM has reached detector after "+str(iter)+" scatterings. Terminating loop.")
         break
@@ -174,9 +179,9 @@ for iter in range(1,itermax):
     print("Fraction of particles reaching detector after "+str(iter)+" scatterings is "+str(nd))
     dist.append(disttest)
     fractionlist.append(nd)
-    if fractionlist[1] > fractionlist[0]*10:
-        print("WARNING: Initial probability is too low. Please set convolution method to 'direct'")
-        quit()
+#    if fractionlist[1] > fractionlist[0]*10:
+#        print("WARNING: Initial probability is too low. Please set convolution method to 'direct'")
+#        quit()
 
 ##########################################################################################
 #energy loss calculation
