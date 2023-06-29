@@ -155,8 +155,8 @@ for iter in range(1,itermax):
     if sum(fractionlist)>0.9:
         print("More than 90 percent of DM has reached detector after "+str(iter)+" scatterings. Terminating loop.")
         break
-    dist2=convolve(disttest,distconv,method="convm").tolist()
-    dist3=convolve(distbelow,distconv,method="convm").tolist()
+    dist2=convolve(disttest,distconv,method=convm).tolist()
+    dist3=convolve(distbelow,distconv,method=convm).tolist()
 
     #compute the number of particles that traveled from above the detector to below it,
     #and the fraction of particles that backscattered from below he detector to above it
