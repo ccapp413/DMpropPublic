@@ -16,6 +16,10 @@ from scipy.optimize import fsolve
 from scipy.integrate import quad
 from scipy.signal import convolve
 
+#whether to use cresst underground or surface run
+cresstdet="surface"
+#cresstdet="underground"
+
 #a numerical factor that speeds up energy convolution
 #setting this to even smaller values may speed up the integration, but has NOT been tested for values below 10**-10
 speedfactor=10**-9
@@ -84,6 +88,8 @@ linv_N_atm = sigmaA(mdm,logsigma,14)*f_N_atm*rhoatm*n_A/14.0
 
 nucleuslist=[16,28,27,56,40,39,23,24]
 linvlist=[linv_O,linv_Si,linv_Al,linv_Fe,linv_Ca,linv_K,linv_Na,linv_Mg]
+linvlistatm=[linv_N_atm,linv_O_atm]
+nucleuslistatm=[14,16]
 #print("linvlist")
 #print(linvlist)
 
@@ -141,11 +147,16 @@ fractionlist.append(nd)
 #loop over additional scatterings
 natm=0.0
 for iter in range(1,itermax):
+    if fractionlist[-1]<10**-20:
+        convm="direct"
+        print("Using direct convolution")
+    else:
+        convm="fft"
     if sum(fractionlist)>0.9:
         print("More than 90 percent of DM has reached detector after "+str(iter)+" scatterings. Terminating loop.")
         break
-    dist2=convolve(disttest,distconv,method="fft").tolist()
-    dist3=convolve(distbelow,distconv,method="fft").tolist()
+    dist2=convolve(disttest,distconv,method=convm).tolist()
+    dist3=convolve(distbelow,distconv,method=convm).tolist()
 
     #compute the number of particles that traveled from above the detector to below it,
     #and the fraction of particles that backscattered from below he detector to above it
@@ -168,9 +179,6 @@ for iter in range(1,itermax):
     print("Fraction of particles reaching detector after "+str(iter)+" scatterings is "+str(nd))
     dist.append(disttest)
     fractionlist.append(nd)
-    if fractionlist[1] > fractionlist[0]*10:
-        print("WARNING: Initial probability is too low. Please set convolution method to 'direct'")
-        quit()
 
 ##########################################################################################
 #energy loss calculation
@@ -186,6 +194,7 @@ def velocitydist(v):
     Nesc = math.pi * vsun * vsun * (math.sqrt(math.pi) * vsun * math.erf(vesc / vsun) - 2 * vesc * math.exp(-vesc * vesc / vsun / vsun))
     return math.pi*v*vsun*vsun/(vearth*Nesc) * (2*math.exp(-(v*v+vearth*vearth)/(vsun*vsun))*math.sinh(2*v*vearth/(vsun*vsun)) + (math.exp(-(v+vearth)**2/(vsun**2)) - math.exp(-vesc*vesc/(vsun*vsun)))*np.heaviside(np.abs(v+vearth)-vesc,0.5) - (math.exp(-(v-vearth)**2/(vsun**2)) - math.exp(-vesc*vesc/(vsun*vsun)))*np.heaviside(np.abs(v-vearth)-vesc,0.5) )*np.heaviside(vearth+vesc-v,0.5)
 
+#convert velocity distribution into an energy distribution
 def edist(mdm,edm):
     return velocitydist((2*edm/mdm)**(0.5))*1.0/(2.0*mdm*edm)**0.5
 energyplots=[]
@@ -253,6 +262,9 @@ for i in range(1,3000):
     eplot.append(edist(mdm,i/1000000000.))
 
 nA=6.022*10**23
+
+########################################
+#this section is for xenon, we probably won't be using it
 exposurexenon=1042*1000*nA*34.2*(60*60*24)
 
 fveldist=interp1d([10**-6*i for i in range(1,3000)],finalvelocitydist[len(fractionlist)-1],bounds_error=False,fill_value=0)
@@ -268,116 +280,112 @@ xenoneffy=[0.0025798775153107500,0.04034155730533700,0.14739737532808400,0.46020
 xenonefficiency=interp1d(xenoneffx,xenoneffy,bounds_error=False,fill_value=0)
 totalevents=integrate.quad(lambda en: frecoil(en)*xenonefficiency(en),4.9*10**-6,40.9*10**-6)
 print("total events in XENON1T is "+str(totalevents[0]))
+########################################
 
 #below is for surface run
-cresstdata=[19.7*10**-9]
-with open('cresstevents.dat',"r") as dat_file:
-    for row in dat_file.readlines():
-        cresstdata.append(float(row)*10**-6)
-cresstdata.sort()
-cresstdata.append(600*10**-9)
-#print("cresst data is")
-#print(cresstdata)
+if cresstdet=="surface":
+    cresstdata=[19.7*10**-9]
+    with open('cresstevents.dat',"r") as dat_file:
+        for row in dat_file.readlines():
+            cresstdata.append(float(row)*10**-6)
+    cresstdata.sort()
+    cresstdata.append(600*10**-9)
 
 #below is for cresst underground run
-#cresstdata=[30.1*10**-9]
-#with open('C3P1_DetA_AR.dat.txt',"r") as dat_file:
-#    for row in dat_file.readlines():
-#        cresstdata.append(float(row)*10**-6)
-#cresstdata.sort()
-#cresstdata.append(16000*10**-9)
-##print("cresst data is")
-##print(cresstdata)
-
-##supercdmsdata=[16.3*10**-9]
-##with open('supercdmsdata.dat',"r") as datfile:
-##    for row in datfile.readlines():
-##        supercdmsdata.append(float(row)*10**-6)
-##supercdmsdata.sort()
-##supercdmsdata.append(240*10**-9)
-##print("supercdmsdata")
-##print(len(supercdmsdata))
+if cresstdet=="underground":
+    cresstdata=[30.1*10**-9]
+    with open('C3P1_DetA_AR.dat.txt',"r") as dat_file:
+        for row in dat_file.readlines():
+            cresstdata.append(float(row)*10**-6)
+    cresstdata.sort()
+    cresstdata.append(16000*10**-9)
 
 detector="cresst"
 
 #exposure in gram-days
 nA=6.022*10**23
-if detector=="cresst":
+#exposure and energy resolution of the cresst surface and underground detectors
+if cresstdet=="surface":
     exposure=0.046*nA*(60*60*24)#change to this for surface run
     resolution=3.74*10**-9
-#    exposure=5689*nA*(60*60*24)#change to this for below ground run
-#    resolution=4.6*10**-9
+if cresstdet=="underground":
+    exposure=5689*nA*(60*60*24)#change to this for below ground run
+    resolution=4.6*10**-9
 #if detector=="supercdms":
 #    exposure=9.9*nA*(60*60*24)
 #    resolution=3.86*10**-9
 #print(finalvelocitydist[len(fractionlist)-1])
 
-##the below is redundant?
-#fveldist=interp1d([10**-6*i*finalvelocitydist[len(fractionlist)-1][i] for i in range(1,3000)],bounds_error=False,fill_value=0)
+#finalvelocitydist is the list of velocity distributions that the code eventually plots
+#The last element of finalvelocitydist is the vull velocity distribution after summing over the specified number of scatterings
+#frecoilO and frecoilAl are the recoil spectra for oxygen and aluminum givn a detector like the CRESST surface detector
+
 fveldist=interp1d([10**-6*i for i in range(1,3000)],finalvelocitydist[len(fractionlist)-1],bounds_error=False,fill_value=0)
 ereclist=np.linspace(.1*10**-9,1700*10**-9,1000)
 espectlistO=[]
-espectlistAr=[]
+espectlistAl=[]
 espectlistW=[]
 espectlistCa=[]
 espectlistWfake=[]
 for erec in ereclist:
     vminO=(erec*(mdm+16.*amu)**2/(2.*16.*amu*mdm**2))**(0.5)
-    vminAr=(erec*(mdm+27.*amu)**2/(2.*27.*amu*mdm**2))**(0.5)
+    vminAl=(erec*(mdm+27.*amu)**2/(2.*27.*amu*mdm**2))**(0.5)
     vminCa=(erec*(mdm+40.*amu)**2/(2.*40.*amu*mdm**2))**(0.5)
     vminW=(erec*(mdm+184.*amu)**2/(2.*184.*amu*mdm**2))**(0.5)
 #    print(vmin)
     vmax=0.003
-    if detector=="cresst":#element mass fraction times speed of light times exposure over nuclear mass times dm density times other stuff
 #the following two are for surface run
+    if cresstdet=="surface":#element mass fraction times speed of light times exposure over nuclear mass times dm density times other stuff
         espectlistO.append(((3.*16.)/(3.*16.+2.*27.))*(3.0*10**10/(1.0))*(exposure/(16*amu))*(0.5*0.3/mdm)*(mdm+16*amu)**2/(2*16*amu*mdm**2)*sigmaA(mdm,logsigma,16.0)*integrate.quad(lambda v: fveldist(v)/v,vminO,vmax)[0])
-        espectlistAr.append(((2.*27.)/(3.*16.+2.*27.))*(3.0*10**10/(1.0))*(exposure/(27*amu))*(0.5*0.3/mdm)*(mdm+27*amu)**2/(2*27*amu*mdm**2)*sigmaA(mdm,logsigma,27.0)*integrate.quad(lambda v: fveldist(v)/v,vminAr,vmax)[0])
+        espectlistAl.append(((2.*27.)/(3.*16.+2.*27.))*(3.0*10**10/(1.0))*(exposure/(27*amu))*(0.5*0.3/mdm)*(mdm+27*amu)**2/(2*27*amu*mdm**2)*sigmaA(mdm,logsigma,27.0)*integrate.quad(lambda v: fveldist(v)/v,vminAl,vmax)[0])
 #the following three are for underground run
-#        espectlistO.append(((4.*16.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(16*amu))*(0.5*0.3/mdm)*(mdm+16*amu)**2/(2*16*amu*mdm**2)*sigmaA(mdm,logsigma,16.0)*integrate.quad(lambda v: fveldist(v)/v,vminO,vmax)[0])
-#        espectlistW.append(((184.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(184*amu))*(0.5*0.3/mdm)*(mdm+184*amu)**2/(2*184*amu*mdm**2)*sigmaA(mdm,logsigma,184.0)*integrate.quad(lambda v: fveldist(v)/v,vminW,vmax)[0])
-##        espectlistWfake.append(((184.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(184*amu))*(0.5*0.3/mdm)*(mdm+16*amu)**2/(2*184*amu*mdm**2)*sigmaA(mdm,logsigma,184.0)*integrate.quad(lambda v: fveldist(v)/v,vminW,vmax)[0])
-#        espectlistCa.append(((40.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(40*amu))*(0.5*0.3/mdm)*(mdm+40*amu)**2/(2*40*amu*mdm**2)*sigmaA(mdm,logsigma,40.0)*integrate.quad(lambda v: fveldist(v)/v,vminCa,vmax)[0])
+    if cresstdet=="underground":
+        espectlistO.append(((4.*16.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(16*amu))*(0.5*0.3/mdm)*(mdm+16*amu)**2/(2*16*amu*mdm**2)*sigmaA(mdm,logsigma,16.0)*integrate.quad(lambda v: fveldist(v)/v,vminO,vmax)[0])
+        espectlistW.append(((184.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(184*amu))*(0.5*0.3/mdm)*(mdm+184*amu)**2/(2*184*amu*mdm**2)*sigmaA(mdm,logsigma,184.0)*integrate.quad(lambda v: fveldist(v)/v,vminW,vmax)[0])
+#        espectlistWfake.append(((184.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(184*amu))*(0.5*0.3/mdm)*(mdm+16*amu)**2/(2*184*amu*mdm**2)*sigmaA(mdm,logsigma,184.0)*integrate.quad(lambda v: fveldist(v)/v,vminW,vmax)[0])
+        espectlistCa.append(((40.)/(4.*16.+40.+184.))*(3.0*10**10/(1.0))*(exposure/(40*amu))*(0.5*0.3/mdm)*(mdm+40*amu)**2/(2*40*amu*mdm**2)*sigmaA(mdm,logsigma,40.0)*integrate.quad(lambda v: fveldist(v)/v,vminCa,vmax)[0])
     if detector=="supercdms":
         espectlistO.append((3.0*10**10/(1.0))*(exposure/(28*amu))*(0.5*0.3/mdm)*(mdm+28*amu)**2/(2*28*amu*mdm**2)*sigmaA(mdm,logsigma,28.0)*integrate.quad(lambda v: fveldist(v)/v**2,vminO,vmax)[0])
 print("espect is")
 
 frecoilO=interp1d(ereclist,espectlistO,bounds_error=False,fill_value=0)
-frecoilAr=interp1d(ereclist,espectlistAr,bounds_error=False,fill_value=0)#surface run
-#frecoilW=interp1d(ereclist,espectlistW,bounds_error=False,fill_value=0)#underground run
+if cresstdet=="surface":
+    frecoilAl=interp1d(ereclist,espectlistAl,bounds_error=False,fill_value=0)#surface run
+if cresstdet=="underground":
+    frecoilW=interp1d(ereclist,espectlistW,bounds_error=False,fill_value=0)#underground run
 #frecoilWfake=interp1d(ereclist,espectlistWfake,bounds_error=False,fill_value=0)
-#frecoilCa=interp1d(ereclist,espectlistCa,bounds_error=False,fill_value=0)#underground run
+    frecoilCa=interp1d(ereclist,espectlistCa,bounds_error=False,fill_value=0)#underground run
 #result=np.convolve(frecoil,np.exp(-0.5*(x/(3.74*10**-9))**2))
 espectlist2=[]
 espectlistconv=[]
 
 #below is for surface run
-for erec in ereclist:
-    if erec > 10**-8:
-        espectlist2.append(np.convolve([(frecoilO(en)+frecoilAr(en)) for en in np.linspace(erec-3*resolution,erec+3*resolution,num=1000)],[(6*resolution/(1000))/(resolution*(2.*3.14159)**.5)*2.718**(-0.5*((x)/(resolution))**2.) for x in np.linspace(-3*resolution,3*resolution,num=1000)],"valid")[0])
-    else:
-        espectlist2.append(frecoilO(erec)+frecoilAr(erec))
-frecoil2=interp1d(ereclist,espectlist2,bounds_error=False,fill_value=0)
+if cresstdet=="surface":
+    for erec in ereclist:
+        if erec > 10**-8:
+            espectlist2.append(np.convolve([(frecoilO(en)+frecoilAl(en)) for en in np.linspace(erec-3*resolution,erec+3*resolution,num=1000)],[(6*resolution/(1000))/(resolution*(2.*3.14159)**.5)*2.718**(-0.5*((x)/(resolution))**2.) for x in np.linspace(-3*resolution,3*resolution,num=1000)],"valid")[0])
+        else:
+            espectlist2.append(frecoilO(erec)+frecoilAl(erec))
+    frecoil2=interp1d(ereclist,espectlist2,bounds_error=False,fill_value=0)
 
 #below is for underground run
-#for erec in ereclist:
-#    if erec > 10**-8:
-#        espectlist2.append(np.convolve([(frecoilO(en)+frecoilCa(en)+frecoilW(en)) for en in np.linspace(erec-3*resolution,erec+3*resolution,num=1000)],[(6*resolution/(1000))/(resolution*(2.*3.14159)**.5)*2.718**(-0.5*((x)/(resolution))**2.) for x in np.linspace(-3*resolution,3*resolution,num=1000)],"valid")[0])
-#    else:
-#        espectlist2.append(frecoilO(erec)+frecoilCa(erec)+frecoilW(erec))
-#frecoil2=interp1d(ereclist,espectlist2,bounds_error=False,fill_value=0)
+if cresstdet=="underground":
+    for erec in ereclist:
+        if erec > 10**-8:
+            espectlist2.append(np.convolve([(frecoilO(en)+frecoilCa(en)+frecoilW(en)) for en in np.linspace(erec-3*resolution,erec+3*resolution,num=1000)],[(6*resolution/(1000))/(resolution*(2.*3.14159)**.5)*2.718**(-0.5*((x)/(resolution))**2.) for x in np.linspace(-3*resolution,3*resolution,num=1000)],"valid")[0])
+        else:
+            espectlist2.append(frecoilO(erec)+frecoilCa(erec)+frecoilW(erec))
+    frecoil2=interp1d(ereclist,espectlist2,bounds_error=False,fill_value=0)
 
-cressteffx=[x*10**-9 for x in [1,15.27,17.89,20.43,23.00,25.58,28.20,30.71,33.20,35.06,1000]]#surface
-cressteffy=[.001,.12,.32,.57,.80,.94,.985,.995,.995,.996,1]#surface
-#cressteffx=[x*10**-9 for x in [.1,22.1,26.7,30,33.8,38.6,45.6,53.3,68,84.7,112,149,211,310,438,639,1108,1920,3461,5953,9317,12960,15899,20000]]#below ground
-#cressteffy=[0.001,.018,.107,.282,.395,.509,.535,.553,.57,.578,.588,.593,.598,.608,.626,.636,.642,.645,.647,.643,.624,.634,.654,.654]#below ground
+if cresstdet=="surface":
+    cressteffx=[x*10**-9 for x in [1,15.27,17.89,20.43,23.00,25.58,28.20,30.71,33.20,35.06,1000]]#surface
+    cressteffy=[.001,.12,.32,.57,.80,.94,.985,.995,.995,.996,1]#surface
+if cresstdet=="underground":
+    cressteffx=[x*10**-9 for x in [.1,22.1,26.7,30,33.8,38.6,45.6,53.3,68,84.7,112,149,211,310,438,639,1108,1920,3461,5953,9317,12960,15899,20000]]#below ground
+    cressteffy=[0.001,.018,.107,.282,.395,.509,.535,.553,.57,.578,.588,.593,.598,.608,.626,.636,.642,.645,.647,.643,.624,.634,.654,.654]#below ground
 cresstefficiency=interp1d(cressteffx,cressteffy,bounds_error=False,fill_value=0)
-if detector=="cresst":
-#these integrals don't really work because the energy range is too wide but they aren't used for computing the CL anyway
-    totalevents=integrate.quad(lambda en: frecoil2(en)*cresstefficiency(en),19.7*10**-9,600*10**-9,limit=100)#change to this for surface run
-#    totalevents=integrate.quad(lambda en: frecoil2(en)*cresstefficiency(en),30.1*10**-9,16000*10**-9,limit=100)#change to this for below ground run
-    print("total events in CRESST is "+str(totalevents[0]))
-if detector=="supercdms":
-    totalevents=integrate.quad(lambda en: .883*frecoil2(en),16.3*10**-9,240*10**-9,limit=100)
+#if detector=="cresst":
+#
 #factor of 2 is to account for Emken et al.'s assumption that half of flux is not blocked by the Earth
 #factor of .001 is for subdominant DM
 sizelist=[]
@@ -385,10 +393,12 @@ for i in range(len(cresstdata)-1):
     sizelist.append(2*integrate.quad(lambda en: frecoil2(en)*cresstefficiency(en),cresstdata[i],cresstdata[i+1],limit=100)[0])
 
 #compute CL for CRESST detector using the optimal interval method
+#mu1 is the total number of events
 mu1=sum(sizelist)
 xmax=max(sizelist)
 cl=sum([(1+n/(mu1-n*xmax))*math.exp(-n*xmax)*(n*xmax-mu1)**math.floor(n/2)*(n*xmax-mu1)**(n-math.floor(n/2))/(math.factorial(n)) for n in range(int(mu1/xmax)+1)])
 print("cl is "+str(cl))
+print("total events is "+str(mu1))
 
 fig = plt.figure(figsize=(5.5,5))
 
@@ -411,37 +421,57 @@ def dedx(en):
     return 0.5*sum([linvlist[j]*en*elossmaxfrac(mdm,nucleuslist[j]) for j in range(len(nucleuslist))])
 def integrand(en):
     return -1.0/(dedx(en))
-
-imin=0
-jacmin=0
-imax=0
-jacmax=0
-counter=0
-for i in range(len(velArray)):
-    if counter>1 and scatterArray[i]==0:
+def dedxatm(en):
+    return 0.5*sum([linvlistatm[j]*en*elossmaxfrac(mdm,nucleuslistatm[j]) for j in range(len(nucleuslistatm))])
+def integrandatm(en):
+    return -1.0/(dedxatm(en))
+print("Computing Straight Line Approximation")
+interpfuncs=[]
+for costheta in [(i-1/2)/50 for i in np.linspace(1,50,50)]:
+#for costheta in [0.025,0.075,0.125,0.175,0.225,0.275,0.325,0.375,0.425,0.475,0.525,0.575,0.625,0.675,0.725,0.775,0.825,0.875,0.925,0.975]:
+    imin=0
+    jacmin=0
+    imax=0
+    jacmax=0
+    counter=0
+    for i in range(len(velArray)):
+        if counter>1 and scatterArray[i]==0:
+            break
+        if scatterArray[i]>0:
+            counter=counter+1
+            vc=velArray[i]
+            if shield==1:
+                func = lambda v: quad(integrand,0.5*vc**2*mdm,0.5*v**2*mdm)[0]-100*depth/(1.0-costheta)
+            else:
+                func = lambda v: quad(integrandatm,0.5*vc**2*mdm,0.5*v**2*mdm)[0]-1000/(1.0-costheta)
+            vnewc=np.abs(fsolve(func,0.0001)[0])
+            jacobian=vc/vnewc
+            if jacmin==0:
+                jacmin=jacobian
+                imin=i
+            jacmax=jacobian
+            imax=i
+            velArray2[i]=vnewc
+    for i in range(len(velArray)-1):
+        if scatterArray[i]==0:
+            if i<imin:
+                velArray2[i]=velArray[i]/jacmin
+            if i>imax:
+                velArray2[i]=velArray[i]/jacmax
+    for i in range(len(scatterArray)):
+        if scatterArray[i]>0 and i<len(scatterArray)-1:
+            scatterArray2[i]=scatterArray[i]*(velArray[i+1]-velArray[i-1])/(velArray2[i+1]-velArray2[i-1])
+    interpfuncs.append(interp1d(velArray2[:-1],scatterArray2[:-1],bounds_error=False, fill_value=0))
+    if(velArray2[-2]<0.00001):
         break
-    if scatterArray[i]>0:
-        counter=counter+1
-        vc=velArray[i]
-        func = lambda v: quad(integrand,0.5*vc**2*mdm,0.5*v**2*mdm)[0]-140000
-        vnewc=np.abs(fsolve(func,0.0001)[0])
-        jacobian=vc/vnewc
-        if jacmin==0:
-            jacmin=jacobian
-            imin=i
-        jacmax=jacobian
-        imax=i
-        velArray2[i]=vnewc
-for i in range(len(velArray)-1):
-    if scatterArray[i]==0:
-        if i<imin:
-            velArray2[i]=velArray[i]/jacmin
-        if i>imax:
-            velArray2[i]=velArray[i]/jacmax
-for i in range(len(scatterArray)):
-    if scatterArray[i]>0 and i<len(scatterArray)-1:
-        scatterArray2[i]=scatterArray[i]*(velArray[i+1]-velArray[i-1])/(velArray2[i+1]-velArray2[i-1])
-plt.plot(velArray2,scatterArray2,"k--")
+
+def add_curves(list):
+    def compute(x):
+        return sum([el(x) for el in list])
+    return compute
+curvesum = add_curves(interpfuncs)
+scatterArraySL = [0.02*curvesum(x) for x in np.linspace(0.00002,0.0027,100)]
+plt.plot(np.linspace(0.00002,0.0027,100),scatterArraySL,"k--")
 
 plt.tick_params(which='both',direction='in',labelsize=10)
 
