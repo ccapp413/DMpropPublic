@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import os
 import os.path
+import sys
 import csv
 import numpy as np
 import math
@@ -61,15 +62,22 @@ Path("depth").mkdir(exist_ok=True)
 Path("energy").mkdir(exist_ok=True)
 
 #input parameters
-shield = int(input("Please type 1 for crust shielding, or 0 for atmospheric (default is crust): ") or 1)
-mdm = float(input("Please input dark matter mass in GeV (default is 1.0): ") or 1.0)
-logsigma = float(input("Please input Log_10 of the DM-nucleon cross section in units of cm^2 (Log_10[sigma/cm^2]; default is -30): ") or -30.0)
+#shield = int(input("Please type 1 for crust shielding, or 0 for atmospheric (default is crust): ") or 1)
+#mdm = float(input("Please input dark matter mass in GeV (default is 1.0): ") or 1.0)
+#logsigma = float(input("Please input Log_10 of the DM-nucleon cross section in units of cm^2 (Log_10[sigma/cm^2]; default is -30): ") or -30.0)
+
+shield = int(sys.argv[1])
+mdm = float(sys.argv[2])
+logsigma = float(sys.argv[3])
+
 depth=0.01
 if shield==1:
-    depth = float(input("Please input detector depth in m (default is 1000): ") or 1000)
+#    depth = float(input("Please input detector depth in m (default is 1000): ") or 1000)
+    depth = float(sys.argv[4])
     if depth < 10:
         print("Warning: you have chosen crust shielding, but have set the detector depth to less than 10 m. Note that this code will not account for atmospheric attenuation, which may become significant for depth << 10 m.")
-itermax = int(input("Please choose the number of convolutions to perform (default is zero): ") or 0)+1
+#itermax = int(input("Please choose the number of convolutions to perform (default is zero): ") or 0)+1
+itermax = int(sys.argv[5])
 if itermax == 0:
     print("Warning: zero iterations selected. Outputting only the distribution of first scattering depths and fraction of particles reaching the detector without scattering.")
 
@@ -126,7 +134,7 @@ disttest=[]
 distbelow=[]
 distconv=[]
 testx=np.linspace(0,res,200000)
-belowx=np.linspace(res+res/200000,2*res,200000)
+belowx=np.linspace(res+res/200000,2*res,400000)
 testconv=np.linspace(0,2*(res),399999)
 for i in testx:
     disttest.append(1.0/l * gammazero(10**(-5)+i/l)/200)
@@ -157,6 +165,8 @@ for iter in range(1,itermax):
         break
     dist2=convolve(disttest,distconv,method=convm).tolist()
     dist3=convolve(distbelow,distconv,method=convm).tolist()
+#    dist2=[i/100 for i in dist2]
+#    dist3=[i/100 for i in dist3]
 
     #compute the number of particles that traveled from above the detector to below it,
     #and the fraction of particles that backscattered from below he detector to above it
@@ -182,7 +192,6 @@ for iter in range(1,itermax):
 #    if fractionlist[1] > fractionlist[0]*10:
 #        print("WARNING: Initial probability is too low. Please set convolution method to 'direct'")
 #        quit()
-
 ##########################################################################################
 #energy loss calculation
 def elossmaxfrac(mdm,A):
@@ -394,14 +403,19 @@ cresstefficiency=interp1d(cressteffx,cressteffy,bounds_error=False,fill_value=0)
 sizelist=[]
 for i in range(len(cresstdata)-1):
     sizelist.append(2*integrate.quad(lambda en: frecoil2(en)*cresstefficiency(en),cresstdata[i],cresstdata[i+1],limit=100)[0])
-
+#sizelistzero=2*integrate.quad(lambda en: frecoil2(en)*cresstefficiency(en),3.01*10**-8,cresstdata[0],limit=100)[0]
 #compute CL for CRESST detector using the optimal interval method
 #mu1 is the total number of events
 mu1=sum(sizelist)
 xmax=max(sizelist)
+#for n in range(int(mu1/xmax)+1):
+#	print((n*xmax-mu1)**n)
+#	print((1+n/(mu1-n*xmax))*math.exp(-n*xmax)*(n*xmax-mu1)**(n/2)*(n*xmax-mu1)**(n/2)/(math.factorial(n)))
 cl=sum([(1+n/(mu1-n*xmax))*math.exp(-n*xmax)*(n*xmax-mu1)**math.floor(n/2)*(n*xmax-mu1)**(n-math.floor(n/2))/(math.factorial(n)) for n in range(int(mu1/xmax)+1)])
 print("cl is "+str(cl))
 print("total events is "+str(mu1))
+#print(sizelistzero)
+#print(cresstdata)
 
 fig = plt.figure(figsize=(5.5,5))
 
