@@ -487,7 +487,7 @@ def add_curves(list):
         return sum([el(x) for el in list])
     return compute
 curvesum = add_curves(interpfuncs)
-scatterArraySL = [0.02*curvesum(x) for x in np.linspace(0.00002,0.0027,100)]
+scatterArraySL = [0.01*curvesum(x) for x in np.linspace(0.00002,0.0027,100)]#switched from 0.02 to 0.01 to assume that half of flux is blocked by the Earth
 plt.plot(np.linspace(0.00002,0.0027,100),scatterArraySL,"k--")
 
 plt.tick_params(which='both',direction='in',labelsize=10)
