@@ -1,6 +1,6 @@
 This code uses a semi-analytic approach to compute the velocity distribution of light dark matter after propagation through the atmosphere or an overburden. Please note that it is a work in progress.
 
-To use the code, just download and run the script "prop.py", followed by 4 input parameters: whether to use crust or atmospheric shielding (1 for crust, 2 for atmosphere), the DM mass in GeV, Log_10 of the DM-nucleon cross section in units of cm^2, the detector depth, and the number of convolutions to perform. The example input for a run through 100 collisions, with a dark matter mass of 100 MeV and DM-nucleon cross section of 10^-30 cm^2, for a detector 1400 meters underground, is shown below:
+To use the code, just download and run the script "prop.py", followed by 5 input parameters: whether to use crust or atmospheric shielding (1 for crust, 2 for atmosphere), the DM mass in GeV, Log_10 of the DM-nucleon cross section in units of cm^2, the detector depth, and the number of convolutions to perform. The example input for a run through 100 collisions, with a dark matter mass of 100 MeV and DM-nucleon cross section of 10^-30 cm^2, for a detector 1400 meters underground, is shown below:
 
 % python3 prop.py 1 .1 -30 1400 100
 
